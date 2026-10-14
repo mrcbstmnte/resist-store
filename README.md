@@ -63,7 +63,7 @@ npm test                      # needs a resist_test database (see vitest.config.
 
 | Variable | Needed | Notes |
 | --- | --- | --- |
-| `DATABASE_URL` | yes | Set by the Neon integration. |
+| `DATABASE_URL` | yes | Set by the Neon integration. `POSTGRES_URL` also works; migrations use `DATABASE_URL_UNPOOLED` when present. |
 | `ADMIN_USERNAME`, `ADMIN_PASSWORD` | yes | Use a long random password. |
 | `APP_URL` | yes | Your production URL, e.g. `https://resist.vercel.app`. Used for PayMongo redirects and email links. |
 | `PAYMONGO_SECRET_KEY`, `PAYMONGO_WEBHOOK_SECRET` | to take payments | See below. Without them the live store shows "checkout isn't open yet". |
