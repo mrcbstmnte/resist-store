@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { cartCount } from "@/lib/cart";
 import { Wordmark } from "@/components/logo";
 import { SocialLinks } from "@/components/home/social-links";
+import { VercelInsights } from "@/components/vercel-insights";
 
 async function BagLink() {
   const n = await cartCount();
@@ -42,6 +43,8 @@ export default function ShopLayout({ children }: LayoutProps<"/">) {
           </div>
         </div>
       </footer>
+      {/* Storefront only, so admin visits don't count as shopper traffic. */}
+      <VercelInsights />
     </div>
   );
 }
