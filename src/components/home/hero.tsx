@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { DyePanel } from '@/components/dye';
 import { getHero } from '@/lib/hero';
+import { HeroPhoto } from './hero-photo';
 
 /** Full-bleed banner, edited in /admin/hero. Without a photo it shows a drawn print. */
 export async function Hero() {
@@ -8,9 +9,7 @@ export async function Hero() {
   return (
     <HeroFrame>
       {imageUrl ? (
-        // A plain img, so pasted links from any host work as well as uploads.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={imageUrl} alt={alt} fetchPriority="high" className="absolute inset-0 h-full w-full object-cover" />
+        <HeroPhoto src={imageUrl} alt={alt} />
       ) : (
         <DyePanel color="#2340F0" seed={7} style="blot" width={1200} height={700} className="absolute inset-0 h-full w-full" />
       )}
@@ -34,19 +33,33 @@ export async function Hero() {
   );
 }
 
-function HeroFrame({ children }: { children?: React.ReactNode }) {
+function HeroFrame({ children, busy = false }: { children?: React.ReactNode; busy?: boolean }) {
   return (
-    <section className="pt-2 sm:pt-4">
-      <div className="grain relative overflow-hidden rounded-[4px] bg-accent-deep">{children}</div>
+    <section className="pt-2 sm:pt-4" aria-busy={busy || undefined}>
+      <div className="grain relative overflow-hidden rounded-[4px] bg-panel">{children}</div>
     </section>
   );
 }
 
-/** Same box as the banner, so the page doesn't jump while it loads. */
+/** Same box and layout as the banner, so the page doesn't jump while it loads. */
 export function HeroSkeleton() {
   return (
-    <HeroFrame>
-      <div className="min-h-[30rem] sm:min-h-[36rem]" />
+    <HeroFrame busy>
+      <div className="skeleton absolute inset-0" />
+      <div className="relative flex min-h-[30rem] flex-col justify-end gap-6 p-5 sm:min-h-[36rem] sm:p-10" aria-hidden="true">
+        <div className="grid max-w-[34rem] gap-3">
+          <div className="h-[clamp(3.5rem,11vw,8.5rem)] w-full rounded-[3px] bg-ink/10" />
+          <div className="h-[clamp(3.5rem,11vw,8.5rem)] w-3/4 rounded-[3px] bg-ink/10" />
+          <div className="h-[clamp(3.5rem,11vw,8.5rem)] w-1/2 rounded-[3px] bg-ink/10" />
+        </div>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="grid w-72 max-w-full gap-2">
+            <div className="h-4 rounded-full bg-ink/10" />
+            <div className="h-4 w-2/3 rounded-full bg-ink/10" />
+          </div>
+          <div className="h-12 w-40 rounded-full bg-ink/10" />
+        </div>
+      </div>
     </HeroFrame>
   );
 }

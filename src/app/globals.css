@@ -166,12 +166,35 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
+  /* Loading placeholder: a soft highlight sweeping across the panel colour. */
+  .skeleton {
+    background-color: var(--color-panel);
+    background-image: linear-gradient(
+      100deg,
+      transparent 20%,
+      color-mix(in srgb, var(--color-ink) 9%, transparent) 50%,
+      transparent 80%
+    );
+    background-size: 200% 100%;
+    background-repeat: no-repeat;
+    animation: skeleton-sweep 1.4s ease-in-out infinite;
+  }
+
   /* Running-track surface with a lane line — where the brand shoots its flat-lays. */
   .track {
     background-color: var(--color-clay);
     background-image:
       radial-gradient(circle at 118% 112%, transparent 61.2%, rgb(255 255 255 / 0.82) 61.6%, rgb(255 255 255 / 0.82) 62.6%, transparent 63%),
       radial-gradient(circle at 30% 20%, rgb(255 255 255 / 0.06), transparent 60%);
+  }
+}
+
+@keyframes skeleton-sweep {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -50% 0;
   }
 }
 
