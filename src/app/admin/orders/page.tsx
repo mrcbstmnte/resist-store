@@ -125,7 +125,10 @@ function OrderTable({ list }: { list: Awaited<ReturnType<typeof recentOrders>> }
                 </Link>
               </td>
               <td className="num px-3 py-2.5 text-ink-soft">{dateTime(o.channelId ? (o.paidAt ?? o.createdAt) : o.createdAt)}</td>
-              <td className="px-3 py-2.5">{o.channel?.name ?? WEBSITE}</td>
+              <td className="px-3 py-2.5">
+                {o.channel?.name ?? WEBSITE}
+                {o.recordedBy && <span className="block text-xs text-ink-soft">by {o.recordedBy}</span>}
+              </td>
               <td className="px-3 py-2.5">
                 {o.name} <span className="text-ink-soft">{o.email || o.phone}</span>
               </td>

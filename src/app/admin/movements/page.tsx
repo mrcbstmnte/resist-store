@@ -63,6 +63,7 @@ async function Movements() {
                       {m.order.reference}
                     </Link>{" "}
                     · {m.order.channel?.name ?? WEBSITE}
+                    {m.order.recordedBy && ` · by ${m.order.recordedBy}`}
                   </>
                 ) : (
                   m.note

@@ -17,7 +17,7 @@ import {
   testimonials,
   variants,
 } from "@/db/schema";
-import { isAdminAuthorization } from "@/lib/admin-auth";
+import { adminFromAuthorization } from "@/lib/admin-auth";
 import { InsufficientStockError, SaleInputError, adjustStock, recordOfflineSale } from "@/lib/inventory";
 import { PAYMENT_METHODS, WEBSITE } from "@/lib/sales";
 import { money, slugify } from "@/lib/format";
@@ -27,10 +27,11 @@ import { mailer, sendEmail } from "@/lib/email/send";
 
 export type AdminState = { error?: string; ok?: string } | null;
 
+/** Throws unless the request carries a valid admin login; returns the admin's username. */
 async function requireAdmin() {
-  if (!isAdminAuthorization((await headers()).get("authorization"))) {
-    throw new Error("Unauthorized");
-  }
+  const admin = adminFromAuthorization((await headers()).get("authorization"));
+  if (!admin) throw new Error("Unauthorized");
+  return admin;
 }
 
 export async function changeStock(_: AdminState, form: FormData): Promise<AdminState> {
@@ -439,7 +440,7 @@ function soldAtFrom(day: string): Date | { error: string } {
 }
 
 export async function recordSale(_: AdminState, form: FormData): Promise<AdminState> {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const parsed = saleFields.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const variantIds = form.getAll("variantId").map(Number);
@@ -462,6 +463,7 @@ export async function recordSale(_: AdminState, form: FormData): Promise<AdminSt
       phone: parsed.data.phone,
       note: parsed.data.note,
       soldAt,
+      recordedBy: admin,
     });
   } catch (e) {
     if (e instanceof SaleInputError) return { error: e.message };

@@ -29,6 +29,7 @@ Section headings and footer social links are set in `src/content/home.ts`; every
 
 The stock counts in admin are the one source of truth for every channel. When something sells in person, through Facebook or Instagram messages, or at a pop-up, record it with **Record a sale** (on the Stock and Orders pages):
 
+- The sale is saved with the username of the admin who recorded it.
 - Pick the channel, how they paid, the items and sizes, and optionally shipping, the amount actually paid (less than the list total is saved as a discount), the customer, and a note. Sales can be backdated, but not future-dated.
 - The sale becomes a paid order tagged with its channel, and its units come off the shelf in the same transaction, the same way a paid website order does. It checks against stock on hand. If a website checkout in progress was holding those units, the order page warns you.
 - **Orders** shows paid sales per channel for the last 30 days and filters the list by channel; **Stock history** shows the channel next to every sale.
@@ -80,7 +81,7 @@ npm test                      # needs a resist_test database (see vitest.config.
 | Variable | Needed | Notes |
 | --- | --- | --- |
 | `DATABASE_URL` | yes | Set by the Neon integration. `POSTGRES_URL` also works; migrations use `DATABASE_URL_UNPOOLED` when present. |
-| `ADMIN_USERNAME`, `ADMIN_PASSWORD` | yes | Use a long random password. |
+| `ADMIN_USERNAME`, `ADMIN_PASSWORD` | yes | Use long random passwords. For several admins, list them comma-separated in the same order, e.g. `ana,ben` and `ana-password,ben-password` (passwords can't contain commas). Sales record which admin entered them. |
 | `APP_URL` | yes | Your production URL, e.g. `https://resist.vercel.app`. Used for PayMongo redirects and email links. |
 | `PAYMONGO_SECRET_KEY`, `PAYMONGO_WEBHOOK_SECRET` | to take payments | See below. Without them the live store shows "checkout isn't open yet". |
 | `PAYMONGO_PAYMENT_METHODS` | no | Defaults to `gcash,paymaya,card,qrph,grab_pay`. |

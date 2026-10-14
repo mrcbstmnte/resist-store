@@ -65,7 +65,10 @@ async function Detail({ params, searchParams }: PageProps<"/admin/orders/[id]">)
         <dt className="text-ink-soft">Channel</dt>
         <dd>{o.channel?.name ?? WEBSITE}</dd>
         <dt className="text-ink-soft">{offline ? "Recorded" : "Placed"}</dt>
-        <dd className="num">{dateTime(o.createdAt)}</dd>
+        <dd className="num">
+          {dateTime(o.createdAt)}
+          {o.recordedBy && <span className="font-sans"> by {o.recordedBy}</span>}
+        </dd>
         {o.paidAt && (
           <>
             <dt className="text-ink-soft">Paid</dt>

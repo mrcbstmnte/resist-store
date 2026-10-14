@@ -47,12 +47,14 @@ describe('recordOfflineSale', () => {
       lines: [{ variantId: v.id, quantity: 2 }],
       paymentMethod: 'GCash',
       customerName: 'Ben',
+      recordedBy: 'ana',
     });
     expect(order).toMatchObject({
       status: 'paid',
       channelId: fb.id,
       paymentMethod: 'GCash',
       name: 'Ben',
+      recordedBy: 'ana',
       totalCents: 178000,
       discountCents: 0,
     });

@@ -106,6 +106,8 @@ export const orders = pgTable(
     paymentMethod: text("payment_method").notNull().default(""),
     discountCents: integer("discount_cents").notNull().default(0),
     note: text("note").notNull().default(""),
+    // Admin username that recorded an offline sale; empty for website orders.
+    recordedBy: text("recorded_by").notNull().default(""),
     totalCents: integer("total_cents").notNull(),
     checkoutSessionId: text("checkout_session_id").unique(),
     // Reservation window: pending orders past this time no longer hold stock.

@@ -234,6 +234,8 @@ export type OfflineSale = {
   phone?: string;
   note?: string;
   soldAt?: Date;
+  /** Admin username that recorded the sale. */
+  recordedBy?: string;
 };
 
 /**
@@ -305,6 +307,7 @@ export async function recordOfflineSale(sale: OfflineSale) {
         discountCents: listCents - totalCents,
         totalCents,
         note: sale.note?.trim() ?? "",
+        recordedBy: sale.recordedBy ?? "",
         paidAt: soldAt,
         expiresAt: soldAt,
       })

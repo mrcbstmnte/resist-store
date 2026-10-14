@@ -85,6 +85,13 @@
       "when": 1791978448374,
       "tag": "0011_sales_channels",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791979080518,
+      "tag": "0012_recorded_by",
+      "breakpoints": true
     }
   ]
 }
