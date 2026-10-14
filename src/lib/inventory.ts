@@ -1,6 +1,6 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { db, type Tx } from "@/db";
-import { orderItems, orders, stockMovements, variants } from "@/db/schema";
+import { orderItems, orders, salesChannels, stockMovements, variants } from "@/db/schema";
 import { shippingFeeFor } from "./shipping";
 import { randomBytes } from "node:crypto";
 
@@ -218,5 +218,125 @@ export async function adjustStock(
     await tx.update(variants).set({ stockOnHand: next }).where(eq(variants.id, variantId));
     await tx.insert(stockMovements).values({ variantId, delta, balanceAfter: next, reason, note });
     return next;
+  });
+}
+
+export class SaleInputError extends Error {}
+
+export type OfflineSale = {
+  channelId: number;
+  lines: Line[];
+  paymentMethod: string;
+  /** What the customer actually paid. Defaults to list prices plus shipping; less than that is recorded as a discount. */
+  amountCents?: number;
+  shippingCents?: number;
+  customerName?: string;
+  phone?: string;
+  note?: string;
+  soldAt?: Date;
+};
+
+/**
+ * Records a sale made outside the website (in person, Facebook, a pop-up…) as a paid
+ * order on its channel, and takes the units off the shelf in the same transaction, the
+ * same way a paid website order does. The units are already gone, so this checks against
+ * stock on hand rather than what the website can still sell. Returns the variants whose
+ * website checkouts in progress now hold more than is left, so staff can follow up.
+ */
+export async function recordOfflineSale(sale: OfflineSale) {
+  const merged = new Map<number, number>();
+  for (const l of sale.lines) {
+    if (!Number.isInteger(l.quantity) || l.quantity < 1) throw new SaleInputError("Quantities must be whole numbers of 1 or more");
+    merged.set(l.variantId, (merged.get(l.variantId) ?? 0) + l.quantity);
+  }
+  if (merged.size === 0) throw new SaleInputError("Add at least one item");
+  const shippingCents = sale.shippingCents ?? 0;
+  if (!Number.isInteger(shippingCents) || shippingCents < 0) throw new SaleInputError("Shipping can't be negative");
+  const ids = [...merged.keys()].sort((a, b) => a - b);
+
+  return db.transaction(async (tx) => {
+    const channel = await tx.query.salesChannels.findFirst({ where: eq(salesChannels.id, sale.channelId) });
+    if (!channel) throw new SaleInputError("Pick where the sale happened");
+
+    await tx.execute(sql`SELECT id FROM variants WHERE id IN ${ids} ORDER BY id FOR UPDATE`);
+    const locked = await tx.query.variants.findMany({
+      where: inArray(variants.id, ids),
+      with: { product: true },
+      orderBy: variants.id,
+    });
+    if (locked.length !== ids.length) throw new SaleInputError("One of the items no longer exists");
+
+    const shortages: InsufficientStockError["shortages"] = [];
+    for (const v of locked) {
+      const requested = merged.get(v.id)!;
+      if (requested > v.stockOnHand) shortages.push({ variantId: v.id, requested, available: Math.max(0, v.stockOnHand) });
+    }
+    if (shortages.length) throw new InsufficientStockError(shortages);
+
+    const items = locked.map((v) => ({
+      variantId: v.id,
+      productName: v.product.name,
+      variantLabel: `Size ${v.size}`,
+      unitPriceCents: v.product.priceCents,
+      quantity: merged.get(v.id)!,
+    }));
+    const listCents = items.reduce((s, i) => s + i.unitPriceCents * i.quantity, 0) + shippingCents;
+    const totalCents = sale.amountCents ?? listCents;
+    if (!Number.isInteger(totalCents) || totalCents < 0) throw new SaleInputError("Amount paid can't be negative");
+    if (totalCents > listCents) throw new SaleInputError("Amount paid is more than the items and shipping add up to");
+
+    const soldAt = sale.soldAt ?? new Date();
+    const [order] = await tx
+      .insert(orders)
+      .values({
+        reference: newReference(),
+        status: "paid",
+        channelId: channel.id,
+        paymentMethod: sale.paymentMethod,
+        name: sale.customerName?.trim() || "Walk-in customer",
+        email: "",
+        phone: sale.phone?.trim() ?? "",
+        addressLine1: "",
+        barangay: "",
+        city: "",
+        province: "",
+        postalCode: "",
+        shippingCents,
+        discountCents: listCents - totalCents,
+        totalCents,
+        note: sale.note?.trim() ?? "",
+        paidAt: soldAt,
+        expiresAt: soldAt,
+      })
+      .returning();
+    const inserted = await tx
+      .insert(orderItems)
+      .values(items.map((i) => ({ ...i, orderId: order.id })))
+      .returning();
+
+    const onHandAfter = new Map<number, number>();
+    for (const item of items) {
+      const [v] = await tx
+        .update(variants)
+        .set({ stockOnHand: sql`${variants.stockOnHand} - ${item.quantity}` })
+        .where(eq(variants.id, item.variantId))
+        .returning({ stockOnHand: variants.stockOnHand });
+      onHandAfter.set(item.variantId, v.stockOnHand);
+      await tx.insert(stockMovements).values({
+        variantId: item.variantId,
+        delta: -item.quantity,
+        balanceAfter: v.stockOnHand,
+        reason: "sale",
+        orderId: order.id,
+        note: channel.name,
+      });
+    }
+
+    const reserved = await reservedFor(tx, ids);
+    const overHeld = items
+      .filter((i) => (reserved.get(i.variantId) ?? 0) > onHandAfter.get(i.variantId)!)
+      .map((i) => `${i.productName} (${i.variantLabel})`);
+
+    return { order, items: inserted, channel, overHeld };
   });
 }

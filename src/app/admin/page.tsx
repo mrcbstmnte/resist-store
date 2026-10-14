@@ -34,10 +34,15 @@ async function Stock({ searchParams }: { searchParams: PageProps<"/admin">["sear
   return (
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <h1 className="display text-5xl">Stock</h1>
-        <p className="text-sm text-ink-soft">
-          Available = on hand − held. Held units return automatically when a checkout expires.
-        </p>
+        <div>
+          <h1 className="display text-5xl">Stock</h1>
+          <p className="mt-2 text-sm text-ink-soft">
+            Available = on hand − held. Held units return automatically when a checkout expires.
+          </p>
+        </div>
+        <Link href="/admin/orders/new" className="btn">
+          Record a sale
+        </Link>
       </div>
 
       {orders.oversold > 0 && (

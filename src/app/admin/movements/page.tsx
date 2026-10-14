@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { recentMovements } from "@/lib/admin-data";
 import { dateTime } from "@/lib/format";
+import { WEBSITE } from "@/lib/sales";
 
 export const metadata: Metadata = { title: "Stock history" };
 
@@ -40,7 +41,7 @@ async function Movements() {
             <th className="px-3 py-2 font-semibold">Change</th>
             <th className="px-3 py-2 text-right font-semibold">Units</th>
             <th className="px-3 py-2 text-right font-semibold">On hand after</th>
-            <th className="px-4 py-2 font-semibold">Note</th>
+            <th className="px-4 py-2 font-semibold">Order or note</th>
           </tr>
         </thead>
         <tbody>
@@ -57,9 +58,12 @@ async function Movements() {
               <td className={`num px-3 py-2 text-right ${m.balanceAfter < 0 ? "font-semibold text-out" : ""}`}>{m.balanceAfter}</td>
               <td className="px-4 py-2 text-ink-soft">
                 {m.order ? (
-                  <Link href={`/admin/orders/${m.order.id}`} className="num underline underline-offset-2">
-                    {m.order.reference}
-                  </Link>
+                  <>
+                    <Link href={`/admin/orders/${m.order.id}`} className="num underline underline-offset-2">
+                      {m.order.reference}
+                    </Link>{" "}
+                    · {m.order.channel?.name ?? WEBSITE}
+                  </>
                 ) : (
                   m.note
                 )}

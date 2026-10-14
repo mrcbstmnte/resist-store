@@ -78,6 +78,13 @@
       "when": 1791972598277,
       "tag": "0010_shipping_fee",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791978448374,
+      "tag": "0011_sales_channels",
+      "breakpoints": true
     }
   ]
 }

@@ -3,12 +3,23 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { refresh } from "next/cache";
-import { eq, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { galleryPhotos, hero, orderItems, products, stockMovements, storeSettings, testimonials, variants } from "@/db/schema";
+import {
+  galleryPhotos,
+  hero,
+  orderItems,
+  products,
+  salesChannels,
+  stockMovements,
+  storeSettings,
+  testimonials,
+  variants,
+} from "@/db/schema";
 import { isAdminAuthorization } from "@/lib/admin-auth";
-import { adjustStock } from "@/lib/inventory";
+import { InsufficientStockError, SaleInputError, adjustStock, recordOfflineSale } from "@/lib/inventory";
+import { PAYMENT_METHODS, WEBSITE } from "@/lib/sales";
 import { money, slugify } from "@/lib/format";
 import { MediaError, deleteUpload, photoBackground, saveUpload } from "@/lib/media";
 import { getHero } from "@/lib/hero";
@@ -391,4 +402,123 @@ export async function updateShippingFee(_: AdminState, form: FormData): Promise<
   await db.insert(storeSettings).values({ id: 1, ...values }).onConflictDoUpdate({ target: storeSettings.id, set: values });
   refresh();
   return { ok: parsed.data ? `Saved. New orders pay ${money(parsed.data)} shipping.` : "Saved. Shipping is now free." };
+}
+
+// ── Offline sales and channels ──────────────────────────────────────────────
+
+const optionalPesos = (label: string) =>
+  z.preprocess(
+    (v) => (String(v ?? "").trim() === "" ? undefined : Number(v)),
+    z
+      .number({ error: `Enter the ${label} in pesos` })
+      .min(0, `The ${label} can't be negative`)
+      .transform((n) => Math.round(n * 100))
+      .optional(),
+  );
+
+const saleFields = z.object({
+  channelId: z.coerce.number({ error: "Pick where the sale happened" }).int().positive("Pick where the sale happened"),
+  paymentMethod: z.enum(PAYMENT_METHODS, { error: "Pick how they paid" }),
+  amount: optionalPesos("amount paid"),
+  shipping: optionalPesos("shipping"),
+  customerName: z.string().trim().max(80).default(""),
+  phone: z.string().trim().max(30).default(""),
+  note: z.string().trim().max(300).default(""),
+  soldOn: z.string().trim().default(""),
+});
+
+/** "2026-10-14" → a time on that day in Manila; today means right now. Future dates are refused. */
+function soldAtFrom(day: string): Date | { error: string } {
+  if (!day) return new Date();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return { error: "Pick the date of the sale" };
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(new Date());
+  if (day > today) return { error: "The sale date can't be in the future" };
+  if (day === today) return new Date();
+  const at = new Date(`${day}T12:00:00+08:00`);
+  return Number.isNaN(at.getTime()) ? { error: "Pick the date of the sale" } : at;
+}
+
+export async function recordSale(_: AdminState, form: FormData): Promise<AdminState> {
+  await requireAdmin();
+  const parsed = saleFields.safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const variantIds = form.getAll("variantId").map(Number);
+  const quantities = form.getAll("quantity").map(Number);
+  const lines = variantIds
+    .map((variantId, i) => ({ variantId, quantity: quantities[i] }))
+    .filter((l) => l.variantId > 0);
+  const soldAt = soldAtFrom(parsed.data.soldOn);
+  if ("error" in soldAt) return soldAt;
+
+  let result;
+  try {
+    result = await recordOfflineSale({
+      channelId: parsed.data.channelId,
+      lines,
+      paymentMethod: parsed.data.paymentMethod,
+      amountCents: parsed.data.amount,
+      shippingCents: parsed.data.shipping,
+      customerName: parsed.data.customerName,
+      phone: parsed.data.phone,
+      note: parsed.data.note,
+      soldAt,
+    });
+  } catch (e) {
+    if (e instanceof SaleInputError) return { error: e.message };
+    if (e instanceof InsufficientStockError) {
+      const names = await db.query.variants.findMany({
+        where: inArray(variants.id, e.shortages.map((s) => s.variantId)),
+        with: { product: true },
+      });
+      return {
+        error: e.shortages
+          .map((s) => {
+            const v = names.find((n) => n.id === s.variantId);
+            return `${v ? `${v.product.name} (size ${v.size})` : "An item"}: only ${s.available} on hand`;
+          })
+          .join("; ")
+          .concat(". If the shelf count is wrong, fix it on the Stock page first."),
+      };
+    }
+    throw e;
+  }
+  redirect(`/admin/orders/${result.order.id}?recorded=1`);
+}
+
+const channelName = z.string().trim().min(1, "Give the channel a name").max(40, "Keep the name under 40 characters");
+
+async function nameTaken(name: string, exceptId?: number) {
+  const [row] = await db
+    .select({ id: salesChannels.id })
+    .from(salesChannels)
+    .where(sql`lower(${salesChannels.name}) = lower(${name})`);
+  return Boolean(row && row.id !== exceptId) || name.toLowerCase() === WEBSITE.toLowerCase();
+}
+
+export async function addChannel(_: AdminState, form: FormData): Promise<AdminState> {
+  await requireAdmin();
+  const name = channelName.safeParse(form.get("name"));
+  if (!name.success) return { error: name.error.issues[0].message };
+  if (await nameTaken(name.data)) return { error: `There's already a channel called ${name.data}` };
+  await db.insert(salesChannels).values({
+    name: name.data,
+    position: sql`(SELECT coalesce(max(position), -1) + 1 FROM sales_channels)`,
+  });
+  refresh();
+  return { ok: `Added ${name.data}` };
+}
+
+/** Renames a channel or hides it from the Record sale form. Past sales keep their channel either way. */
+export async function updateChannel(_: AdminState, form: FormData): Promise<AdminState> {
+  await requireAdmin();
+  const id = Number(form.get("id"));
+  const name = channelName.safeParse(form.get("name"));
+  if (!name.success) return { error: name.error.issues[0].message };
+  if (await nameTaken(name.data, id)) return { error: `There's already a channel called ${name.data}` };
+  await db
+    .update(salesChannels)
+    .set({ name: name.data, active: form.get("active") === "on" })
+    .where(eq(salesChannels.id, id));
+  refresh();
+  return { ok: "Saved" };
 }

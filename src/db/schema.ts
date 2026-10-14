@@ -73,6 +73,16 @@ export const variants = pgTable(
   ],
 );
 
+// Where a sale happened besides the website (in person, Facebook, a pop-up…). Edited in /admin/channels.
+// Orders with no channel came through the website.
+export const salesChannels = pgTable("sales_channels", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  active: boolean("active").notNull().default(true),
+  position: integer("position").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const orders = pgTable(
   "orders",
   {
@@ -90,6 +100,12 @@ export const orders = pgTable(
     postalCode: text("postal_code").notNull(),
     // Shipping charged on this order, fixed when it was placed; included in totalCents.
     shippingCents: integer("shipping_cents").notNull().default(0),
+    // Offline sales: the channel, how it was paid, any discount off list price, and a note.
+    // Website orders leave channelId null and pay through PayMongo.
+    channelId: integer("channel_id").references(() => salesChannels.id, { onDelete: "restrict" }),
+    paymentMethod: text("payment_method").notNull().default(""),
+    discountCents: integer("discount_cents").notNull().default(0),
+    note: text("note").notNull().default(""),
     totalCents: integer("total_cents").notNull(),
     checkoutSessionId: text("checkout_session_id").unique(),
     // Reservation window: pending orders past this time no longer hold stock.
@@ -205,8 +221,9 @@ export const variantsRelations = relations(variants, ({ one, many }) => ({
   product: one(products, { fields: [variants.productId], references: [products.id] }),
   movements: many(stockMovements),
 }));
-export const ordersRelations = relations(orders, ({ many }) => ({
+export const ordersRelations = relations(orders, ({ one, many }) => ({
   items: many(orderItems),
+  channel: one(salesChannels, { fields: [orders.channelId], references: [salesChannels.id] }),
 }));
 export const orderItemsRelations = relations(orderItems, ({ one }) => ({
   order: one(orders, { fields: [orderItems.orderId], references: [orders.id] }),
@@ -225,4 +242,5 @@ export type GalleryPhoto = typeof galleryPhotos.$inferSelect;
 export type Testimonial = typeof testimonials.$inferSelect;
 export type Hero = typeof hero.$inferSelect;
 export type StoreSettings = typeof storeSettings.$inferSelect;
+export type SalesChannel = typeof salesChannels.$inferSelect;
 export type Silhouette = (typeof silhouetteEnum.enumValues)[number];

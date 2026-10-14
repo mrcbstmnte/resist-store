@@ -62,7 +62,7 @@ export async function recentOrders(limit = 100) {
   return db.query.orders.findMany({
     orderBy: desc(orders.createdAt),
     limit,
-    with: { items: true },
+    with: { items: true, channel: true },
   });
 }
 
@@ -70,7 +70,7 @@ export async function recentMovements(limit = 200) {
   return db.query.stockMovements.findMany({
     orderBy: desc(stockMovements.id),
     limit,
-    with: { variant: { with: { product: true } }, order: true },
+    with: { variant: { with: { product: true } }, order: { with: { channel: true } } },
   });
 }
 

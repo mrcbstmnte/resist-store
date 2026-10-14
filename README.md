@@ -25,6 +25,17 @@ Section headings and footer social links are set in `src/content/home.ts`; every
 - **Testimonials**: managed in **Admin → Testimonials** (add, edit, show/hide, delete). The section is hidden until at least one is shown. The seed adds none, so only real reviews ever appear.
 - **Social links**: Facebook and Instagram (`resistbcd`) are in the footer.
 
+## Selling outside the website
+
+The stock counts in admin are the one source of truth for every channel. When something sells in person, through Facebook or Instagram messages, or at a pop-up, record it with **Record a sale** (on the Stock and Orders pages):
+
+- Pick the channel, how they paid, the items and sizes, and optionally shipping, the amount actually paid (less than the list total is saved as a discount), the customer, and a note. Sales can be backdated, but not future-dated.
+- The sale becomes a paid order tagged with its channel, and its units come off the shelf in the same transaction, the same way a paid website order does. It checks against stock on hand. If a website checkout in progress was holding those units, the order page warns you.
+- **Orders** shows paid sales per channel for the last 30 days and filters the list by channel; **Stock history** shows the channel next to every sale.
+- **Admin → Orders → Channels** adds, renames, or hides channels (starts with In person, Facebook, Instagram, Pop-up / event). Website orders are tracked automatically.
+
+Use the Stock page's adjust form only for corrections (miscounts, damaged items, giveaways), not for sales.
+
 ## Shipping
 
 **Admin → Shipping** sets one flat fee (₱0 means free) added to every order. Shoppers see it in the bag, PayMongo shows it as its own "Shipping" line, and each order keeps the fee it was charged, so changing it never alters past orders. The fee is worked out in `shippingFeeFor()` in `src/lib/shipping.ts`, which already receives the delivery address, so area-based rates only need changes there (plus an admin screen for the rates).

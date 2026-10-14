@@ -8,7 +8,7 @@ export async function getOrder(id: string) {
   if (!UUID.test(id)) return null;
   const order = await db.query.orders.findFirst({
     where: eq(orders.id, id),
-    with: { items: { with: { variant: { with: { product: true } } } } },
+    with: { items: { with: { variant: { with: { product: true } } } }, channel: true },
   });
   if (!order) return null;
   const lapsed = order.status === "pending" && order.expiresAt <= new Date();
