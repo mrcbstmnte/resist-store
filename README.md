@@ -69,7 +69,8 @@ npm test                      # needs a resist_test database (see vitest.config.
 | `APP_URL` | yes | Your production URL, e.g. `https://resist.vercel.app`. Used for PayMongo redirects and email links. |
 | `PAYMONGO_SECRET_KEY`, `PAYMONGO_WEBHOOK_SECRET` | to take payments | See below. Without them the live store shows "checkout isn't open yet". |
 | `PAYMONGO_PAYMENT_METHODS` | no | Defaults to `gcash,paymaya,card,qrph,grab_pay`. |
-| `RESEND_API_KEY`, `EMAIL_FROM`, `EMAIL_REPLY_TO` | for emails | Order confirmations. Skipped when unset. |
+| `GMAIL_USER`, `GMAIL_APP_PASSWORD` | for emails (free) | Order confirmations through a Gmail account. Skipped when unset. |
+| `RESEND_API_KEY`, `EMAIL_FROM`, `EMAIL_REPLY_TO` | for emails (with a domain) | Order confirmations through Resend; used instead of Gmail when set. |
 | `RESERVATION_MINUTES` | no | Defaults to 30. |
 | `ALLOW_MOCK_PAYMENTS` | no | `true` turns on the fake payment page in production (demos only). Preview deployments get it automatically. |
 
@@ -89,12 +90,23 @@ The success page also asks PayMongo directly whether the session was paid, so or
 
 ## Order confirmation email
 
-When an order is paid, the customer gets a confirmation email with their items, total, and delivery address (`src/lib/email/order-confirmation.ts`). It's sent through [Resend](https://resend.com) with one HTTP call, no SDK.
+When an order is paid, the customer gets a confirmation email with their items, total, and delivery address (`src/lib/email/order-confirmation.ts`). It goes out through Gmail (free, no domain needed) or [Resend](https://resend.com) (once you own a domain). If both are set, Resend is used.
+
+**Gmail (free, for now)**
+
+1. Sign in to the Gmail account the emails should come from (e.g. resistbcd@gmail.com).
+2. Turn on 2-Step Verification: Google Account → Security.
+3. Create an app password: Google Account → Security → 2-Step Verification → **App passwords** (or go to myaccount.google.com/apppasswords). Name it "RESIST store" and copy the 16-letter password.
+4. Set `GMAIL_USER` (the full address) and `GMAIL_APP_PASSWORD` (the 16 letters; spaces are fine) in Vercel, then redeploy.
+
+Emails show as from "RESIST" at that Gmail address. Gmail allows about 500 emails a day, and replies land in that inbox (or in `EMAIL_REPLY_TO` if set). Changing the Google account password cancels the app password, so make a new one if that happens.
+
+**Resend (later, with a domain)**
 
 1. Create a Resend account and verify your sending domain.
-2. Set `RESEND_API_KEY` and `EMAIL_FROM` (for example `RESIST <orders@resist.ph>`). Set `EMAIL_REPLY_TO` if replies should go to another inbox.
+2. Set `RESEND_API_KEY` and `EMAIL_FROM` (for example `RESIST <orders@resist.ph>`). Set `EMAIL_REPLY_TO` if replies should go to another inbox. The Gmail variables can then be removed.
 
-Each order gets one email at most, whichever path marks it paid first (webhook, success page, or test payment). If Resend fails, the next PayMongo webhook retry sends it. Without the env vars, emails are skipped and checkout still works.
+Each order gets one email at most, whichever path marks it paid first (webhook, success page, or test payment). If sending fails, the next PayMongo webhook retry sends it. Without the env vars, emails are skipped and checkout still works.
 
 ## Layout
 

@@ -4,6 +4,8 @@ import type { Metadata } from "next";
 import { recentOrders } from "@/lib/admin-data";
 import { dateTime, money } from "@/lib/format";
 import { STATUS_LABEL, STATUS_STYLE } from "@/lib/order-status";
+import { mailer } from "@/lib/email/send";
+import { EmailCheck } from "./email-check";
 
 export const metadata: Metadata = { title: "Orders" };
 
@@ -14,6 +16,7 @@ export default function OrdersPage({ searchParams }: PageProps<"/admin/orders">)
       <Suspense fallback={<div className="mt-6 h-96 animate-pulse rounded bg-thread/50" />}>
         <Orders searchParams={searchParams} />
       </Suspense>
+      <EmailCheck via={mailer()} defaultTo={process.env.GMAIL_USER?.trim() ?? ""} />
     </>
   );
 }

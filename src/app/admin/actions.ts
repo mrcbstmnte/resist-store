@@ -12,6 +12,7 @@ import { adjustStock } from "@/lib/inventory";
 import { slugify } from "@/lib/format";
 import { MediaError, deleteUpload, photoBackground, saveUpload } from "@/lib/media";
 import { getHero } from "@/lib/hero";
+import { mailer, sendEmail } from "@/lib/email/send";
 
 export type AdminState = { error?: string; ok?: string } | null;
 
@@ -341,4 +342,30 @@ export async function updateHero(_: AdminState, form: FormData): Promise<AdminSt
   if (before.imageUrl !== values.imageUrl) await deleteUpload(before.imageUrl);
   refresh();
   return { ok: "Saved" };
+}
+
+// ── Email ───────────────────────────────────────────────────────────────────
+
+/** Sends a short test message, so the mailer can be checked without a real order. */
+export async function sendTestEmail(_: AdminState, form: FormData): Promise<AdminState> {
+  await requireAdmin();
+  const to = z.email().safeParse(String(form.get("to") ?? "").trim());
+  if (!to.success) return { error: "Enter an email address" };
+  const via = mailer();
+  if (!via) return { error: "No mailer is set up yet. Add GMAIL_USER and GMAIL_APP_PASSWORD, then redeploy." };
+  try {
+    await sendEmail({
+      to: to.data,
+      subject: "RESIST test email",
+      text: "If you can read this, order confirmation emails are working.",
+      html: "<p>If you can read this, order confirmation emails are working.</p>",
+    });
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : String(e);
+    if (/535|Username and Password not accepted|Invalid login/i.test(detail)) {
+      return { error: "Gmail rejected the login. Check GMAIL_USER and that GMAIL_APP_PASSWORD is an app password, not your normal password." };
+    }
+    return { error: `Couldn't send: ${detail.slice(0, 200)}` };
+  }
+  return { ok: `Sent to ${to.data} via ${via === "gmail" ? "Gmail" : "Resend"}. Check that inbox (and spam).` };
 }
