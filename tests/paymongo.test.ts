@@ -45,7 +45,7 @@ describe("createCheckoutSession", () => {
     }) as typeof fetch;
     try {
       const res = await createCheckoutSession({
-        reference: "TL-ABC123",
+        reference: "RST-ABC123",
         customer: { name: "Ana", email: "ana@example.com", phone: "" },
         items: [{ productName: "Tee", variantLabel: "Ink / M", unitPriceCents: 89000, quantity: 2 }],
         successUrl: "https://shop.test/checkout/success?order=1",
@@ -58,7 +58,7 @@ describe("createCheckoutSession", () => {
       );
       const attrs = JSON.parse(String(sent!.init.body)).data.attributes;
       expect(attrs.line_items).toEqual([{ name: "Tee — Ink / M", amount: 89000, currency: "PHP", quantity: 2 }]);
-      expect(attrs.reference_number).toBe("TL-ABC123");
+      expect(attrs.reference_number).toBe("RST-ABC123");
       expect(attrs.payment_method_types).toContain("gcash");
       expect(attrs.billing).toEqual({ name: "Ana", email: "ana@example.com" });
     } finally {

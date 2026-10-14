@@ -25,6 +25,10 @@ Section headings and footer social links are set in `src/content/home.ts`; every
 - **Testimonials**: managed in **Admin → Testimonials** (add, edit, show/hide, delete). The section is hidden until at least one is shown. The seed adds none, so only real reviews ever appear.
 - **Social links**: Facebook and Instagram (`resistbcd`) are in the footer.
 
+## Shipping
+
+**Admin → Shipping** sets one flat fee (₱0 means free) added to every order. Shoppers see it in the bag, PayMongo shows it as its own "Shipping" line, and each order keeps the fee it was charged, so changing it never alters past orders. The fee is worked out in `shippingFeeFor()` in `src/lib/shipping.ts`, which already receives the delivery address, so area-based rates only need changes there (plus an admin screen for the rates).
+
 ## How stock works
 
 | Term | Meaning |
@@ -124,4 +128,4 @@ tests/                       Vitest against real Postgres, incl. concurrent last
 
 ## Not in the MVP
 
-Shipping rates and order fulfilment status, refunds (do them in the PayMongo dashboard), customer accounts, shipping/tracking emails (only the order confirmation is sent).
+Shipping rates by area (there's one flat fee for now), order fulfilment status, refunds (do them in the PayMongo dashboard), customer accounts, shipping/tracking emails (only the order confirmation is sent).

@@ -52,6 +52,10 @@ async function Order({ params }: PageProps<"/orders/[id]">) {
             <span>{money(i.unitPriceCents * i.quantity)}</span>
           </li>
         ))}
+        <li className="num flex justify-between py-3">
+          <span>Shipping</span>
+          <span>{order.shippingCents ? money(order.shippingCents) : "Free"}</span>
+        </li>
         <li className="num flex justify-between py-3 font-semibold">
           <span>Total</span>
           <span>{money(order.totalCents)}</span>

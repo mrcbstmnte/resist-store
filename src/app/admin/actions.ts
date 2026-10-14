@@ -6,10 +6,10 @@ import { refresh } from "next/cache";
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { galleryPhotos, hero, orderItems, products, stockMovements, testimonials, variants } from "@/db/schema";
+import { galleryPhotos, hero, orderItems, products, stockMovements, storeSettings, testimonials, variants } from "@/db/schema";
 import { isAdminAuthorization } from "@/lib/admin-auth";
 import { adjustStock } from "@/lib/inventory";
-import { slugify } from "@/lib/format";
+import { money, slugify } from "@/lib/format";
 import { MediaError, deleteUpload, photoBackground, saveUpload } from "@/lib/media";
 import { getHero } from "@/lib/hero";
 import { mailer, sendEmail } from "@/lib/email/send";
@@ -368,4 +368,27 @@ export async function sendTestEmail(_: AdminState, form: FormData): Promise<Admi
     return { error: `Couldn't send: ${detail.slice(0, 200)}` };
   }
   return { ok: `Sent to ${to.data} via ${via === "gmail" ? "Gmail" : "Resend"}. Check that inbox (and spam).` };
+}
+
+// ── Shipping ────────────────────────────────────────────────────────────────
+
+// Empty means free; z.coerce would also turn "" into 0, but say so explicitly.
+const shippingFee = z.preprocess(
+  (v) => (String(v ?? "").trim() === "" ? 0 : Number(v)),
+  z
+    .number({ error: "Enter the fee in pesos, e.g. 120" })
+    .min(0, "The fee can't be negative")
+    .max(10000, "That fee looks too high (₱10,000 max)")
+    .transform((n) => Math.round(n * 100)),
+);
+
+/** Applies to orders placed from now on; existing orders keep the fee they were charged. */
+export async function updateShippingFee(_: AdminState, form: FormData): Promise<AdminState> {
+  await requireAdmin();
+  const parsed = shippingFee.safeParse(String(form.get("fee") ?? ""));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const values = { shippingFeeCents: parsed.data, updatedAt: new Date() };
+  await db.insert(storeSettings).values({ id: 1, ...values }).onConflictDoUpdate({ target: storeSettings.id, set: values });
+  refresh();
+  return { ok: parsed.data ? `Saved. New orders pay ${money(parsed.data)} shipping.` : "Saved. Shipping is now free." };
 }

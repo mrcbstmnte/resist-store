@@ -88,6 +88,8 @@ export const orders = pgTable(
     city: text("city").notNull(), // city or municipality
     province: text("province").notNull(),
     postalCode: text("postal_code").notNull(),
+    // Shipping charged on this order, fixed when it was placed; included in totalCents.
+    shippingCents: integer("shipping_cents").notNull().default(0),
     totalCents: integer("total_cents").notNull(),
     checkoutSessionId: text("checkout_session_id").unique(),
     // Reservation window: pending orders past this time no longer hold stock.
@@ -184,6 +186,18 @@ export const hero = pgTable(
   (t) => [check("hero_single_row", sql`${t.id} = 1`)],
 );
 
+// Store-wide settings edited in admin. Always exactly one row (id 1).
+export const storeSettings = pgTable(
+  "store_settings",
+  {
+    id: integer("id").primaryKey().default(1),
+    // Flat shipping fee added to every order. Area-based rates can replace it later.
+    shippingFeeCents: integer("shipping_fee_cents").notNull().default(0),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [check("store_settings_single_row", sql`${t.id} = 1`), check("shipping_fee_not_negative", sql`${t.shippingFeeCents} >= 0`)],
+);
+
 export const productsRelations = relations(products, ({ many }) => ({
   variants: many(variants),
 }));
@@ -210,4 +224,5 @@ export type OrderItem = typeof orderItems.$inferSelect;
 export type GalleryPhoto = typeof galleryPhotos.$inferSelect;
 export type Testimonial = typeof testimonials.$inferSelect;
 export type Hero = typeof hero.$inferSelect;
+export type StoreSettings = typeof storeSettings.$inferSelect;
 export type Silhouette = (typeof silhouetteEnum.enumValues)[number];

@@ -51,6 +51,10 @@ export function renderOrderConfirmation(order: Order & { items: OrderItem[] }, o
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
             ${rows}
             <tr>
+              <td style="padding:10px 0 0;font-size:15px;color:#000">Shipping</td>
+              <td align="right" style="padding:10px 0 0;font-size:15px;color:#000">${order.shippingCents ? money(order.shippingCents) : "Free"}</td>
+            </tr>
+            <tr>
               <td style="padding:14px 0 0;font-size:16px;font-weight:bold;color:#000">Total paid</td>
               <td align="right" style="padding:14px 0 0;font-size:16px;font-weight:bold;color:#000">${money(order.totalCents)}</td>
             </tr>
@@ -78,6 +82,7 @@ export function renderOrderConfirmation(order: Order & { items: OrderItem[] }, o
     `Hi ${first}, we've received your payment and we're packing your order now. It usually ships within 2 to 4 days.`,
     "",
     ...order.items.map((i) => `${i.quantity} x ${i.productName} (${i.variantLabel})  ${money(i.unitPriceCents * i.quantity)}`),
+    `Shipping: ${order.shippingCents ? money(order.shippingCents) : "Free"}`,
     `Total paid: ${money(order.totalCents)}`,
     "",
     "Delivering to:",

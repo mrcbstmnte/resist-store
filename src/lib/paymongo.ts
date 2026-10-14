@@ -36,6 +36,8 @@ type CheckoutInput = {
     postalCode?: string;
   };
   items: { productName: string; variantLabel: string; unitPriceCents: number; quantity: number }[];
+  /** Added as its own "Shipping" line so PayMongo's total matches the order. */
+  shippingCents?: number;
   successUrl: string;
   cancelUrl: string;
 };
@@ -52,12 +54,16 @@ export async function createCheckoutSession(input: CheckoutInput) {
     body: JSON.stringify({
       data: {
         attributes: {
-          line_items: input.items.map((i) => ({
-            name: `${i.productName} — ${i.variantLabel}`.slice(0, 255),
-            amount: i.unitPriceCents,
-            currency: "PHP",
-            quantity: i.quantity,
-          })),
+          line_items: [
+            ...input.items.map((i) => ({
+              name: `${i.productName} — ${i.variantLabel}`.slice(0, 255),
+              amount: i.unitPriceCents,
+              currency: "PHP",
+              quantity: i.quantity,
+            })),
+            // PayMongo rejects zero-amount lines, so free shipping is simply left off.
+            ...(input.shippingCents ? [{ name: "Shipping", amount: input.shippingCents, currency: "PHP", quantity: 1 }] : []),
+          ],
           payment_method_types: PAYMENT_METHODS,
           reference_number: input.reference,
           description: `Order ${input.reference}`,

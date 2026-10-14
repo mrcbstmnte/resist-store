@@ -7,6 +7,7 @@ import { setCartQuantity } from "@/app/actions";
 import { Garment } from "@/components/garment";
 import { paymentMode } from "@/lib/paymongo";
 import { RESERVATION_MINUTES } from "@/lib/inventory";
+import { shippingFeeFor } from "@/lib/shipping";
 import { CheckoutForm } from "./checkout-form";
 
 export const metadata: Metadata = { title: "Bag" };
@@ -23,7 +24,8 @@ export default function CartPage({ searchParams }: PageProps<"/cart">) {
 }
 
 async function Cart({ searchParams }: { searchParams: PageProps<"/cart">["searchParams"] }) {
-  const [{ lines, subtotalCents, count }, sp] = await Promise.all([cartDetails(), searchParams]);
+  const [{ lines, subtotalCents, count }, sp, shippingCents] = await Promise.all([cartDetails(), searchParams, shippingFeeFor()]);
+  const totalCents = subtotalCents + shippingCents;
   const cancelled = sp.payment === "cancelled";
 
   if (lines.length === 0) {
@@ -112,15 +114,19 @@ async function Cart({ searchParams }: { searchParams: PageProps<"/cart">["search
             <dd>{count}</dd>
           </div>
           <div className="flex justify-between">
+            <dt>Subtotal</dt>
+            <dd>{money(subtotalCents)}</dd>
+          </div>
+          <div className="flex justify-between">
             <dt>Shipping</dt>
-            <dd>Free</dd>
+            <dd>{shippingCents ? money(shippingCents) : "Free"}</dd>
           </div>
           <div className="flex justify-between border-t border-thread pt-3 text-lg font-semibold">
             <dt>Total</dt>
-            <dd>{money(subtotalCents)}</dd>
+            <dd>{money(totalCents)}</dd>
           </div>
         </dl>
-        <CheckoutForm disabled={blocked || paymentMode() === "off"} total={money(subtotalCents)} mode={paymentMode()}
+        <CheckoutForm disabled={blocked || paymentMode() === "off"} total={money(totalCents)} mode={paymentMode()}
           holdMinutes={RESERVATION_MINUTES}
         />
       </aside>

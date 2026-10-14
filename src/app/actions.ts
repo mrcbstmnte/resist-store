@@ -109,6 +109,7 @@ export async function checkout(_: FormState, form: FormData): Promise<FormState>
         reference: order.reference,
         customer: parsed.data,
         items,
+        shippingCents: order.shippingCents,
         successUrl: `${base}/checkout/success?order=${order.id}`,
         cancelUrl: `${base}/checkout/cancel?order=${order.id}`,
       });

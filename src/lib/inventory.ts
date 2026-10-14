@@ -1,6 +1,7 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { db, type Tx } from "@/db";
 import { orderItems, orders, stockMovements, variants } from "@/db/schema";
+import { shippingFeeFor } from "./shipping";
 import { randomBytes } from "node:crypto";
 
 /**
@@ -67,7 +68,7 @@ export async function stockLevels(variantIds?: number[]): Promise<Map<number, St
 function newReference() {
   const alphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
   const bytes = randomBytes(6);
-  return "TL-" + Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
+  return "RST-" + Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
 }
 
 export type Customer = import("./address").Delivery;
@@ -110,13 +111,15 @@ export async function createPendingOrder(customer: Customer, lines: Line[]) {
       unitPriceCents: v.product.priceCents,
       quantity: merged.get(v.id)!,
     }));
-    const totalCents = items.reduce((s, i) => s + i.unitPriceCents * i.quantity, 0);
+    const shippingCents = await shippingFeeFor(customer, tx);
+    const totalCents = items.reduce((s, i) => s + i.unitPriceCents * i.quantity, 0) + shippingCents;
 
     const [order] = await tx
       .insert(orders)
       .values({
         ...customer,
         reference: newReference(),
+        shippingCents,
         totalCents,
         expiresAt: sql`now() + make_interval(mins => ${RESERVATION_MINUTES})`,
       })
