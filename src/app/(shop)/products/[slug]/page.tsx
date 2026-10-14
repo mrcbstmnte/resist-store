@@ -31,6 +31,7 @@ async function Product({ params }: PageProps<"/products/[slug]">) {
           name: product.name,
           silhouette: product.silhouette,
           imageUrl: product.imageUrl,
+          imageBg: product.imageBg,
           colorHex: product.colorHex,
           price: money(product.priceCents),
           description: product.description,

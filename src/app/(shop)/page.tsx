@@ -1,19 +1,30 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { getCatalog, type CatalogProduct } from "@/lib/catalog";
+import {
+  getCatalog,
+  parseDirection,
+  parseSort,
+  sortCatalog,
+  SORTS,
+  type CatalogProduct,
+  type Direction,
+  type Sort,
+} from "@/lib/catalog";
 import { money } from "@/lib/format";
 import { Garment } from "@/components/garment";
 import { SizeStrip } from "@/components/size-strip";
-import { Hero } from "@/components/home/hero";
+import { Hero, HeroSkeleton } from "@/components/home/hero";
 import { Gallery } from "@/components/home/gallery";
 import { Testimonials } from "@/components/home/testimonials";
 
-export default function Home() {
+export default function Home({ searchParams }: PageProps<"/">) {
   return (
     <>
-      <Hero />
+      <Suspense fallback={<HeroSkeleton />}>
+        <Hero />
+      </Suspense>
       <Suspense fallback={<CatalogSkeleton />}>
-        <Catalog />
+        <Catalog searchParams={searchParams} />
       </Suspense>
       <Suspense fallback={null}>
         <Gallery />
@@ -25,18 +36,69 @@ export default function Home() {
   );
 }
 
-async function Catalog() {
-  const catalog = await getCatalog();
+async function Catalog({ searchParams }: { searchParams: PageProps<"/">["searchParams"] }) {
+  const [catalog, query] = await Promise.all([getCatalog(), searchParams]);
+  const sort = parseSort(query.sort);
+  const direction = parseDirection(query.dir);
 
   return (
     <section id="shop" className="scroll-mt-6 pt-14">
-      <h2 className="display mb-6 text-4xl sm:text-5xl">The drop</h2>
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <h2 className="display text-4xl sm:text-5xl">The drop</h2>
+        <SortControl current={sort} direction={direction} />
+      </div>
       <ul className="grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3">
-        {catalog.map((p) => (
+        {sortCatalog(catalog, sort, direction).map((p) => (
           <ProductTile key={p.id} product={p} />
         ))}
       </ul>
     </section>
+  );
+}
+
+const SORT_LABELS: Record<Sort, string> = { category: "Category", name: "Name", price: "Price" };
+
+const DIRECTION_LABELS: Record<Sort, Record<Direction, string>> = {
+  category: { asc: "tees first", desc: "bags first" },
+  name: { asc: "A to Z", desc: "Z to A" },
+  price: { asc: "low to high", desc: "high to low" },
+};
+
+const sortHref = (sort: Sort, direction: Direction) => {
+  const q = new URLSearchParams();
+  if (sort !== "category") q.set("sort", sort);
+  if (direction === "desc") q.set("dir", "desc");
+  return q.size ? `/?${q}` : "/";
+};
+
+/** Picking a new sort starts ascending; picking the current one again flips it. */
+function SortControl({ current, direction }: { current: Sort; direction: Direction }) {
+  return (
+    <nav aria-label="Sort products" className="flex items-center gap-2 text-sm">
+      <span className="text-ink-soft">Sort by</span>
+      {SORTS.map((sort) => {
+        const on = sort === current;
+        const next: Direction = on && direction === "asc" ? "desc" : "asc";
+        return (
+          <Link
+            key={sort}
+            href={sortHref(sort, next)}
+            scroll={false}
+            aria-current={on ? "true" : undefined}
+            title={`Sort by ${SORT_LABELS[sort].toLowerCase()}, ${DIRECTION_LABELS[sort][next]}`}
+            className="inline-flex items-center gap-1 rounded-full border border-thread px-3 py-1.5 font-bold hover:border-ink aria-[current]:border-ink aria-[current]:bg-ink aria-[current]:text-paper"
+          >
+            {SORT_LABELS[sort]}
+            {on && (
+              <>
+                <span aria-hidden="true">{direction === "asc" ? "↑" : "↓"}</span>
+                <span className="sr-only">({DIRECTION_LABELS[sort][direction]})</span>
+              </>
+            )}
+          </Link>
+        );
+      })}
+    </nav>
   );
 }
 
@@ -46,7 +108,8 @@ function ProductTile({ product: p }: { product: CatalogProduct }) {
     <li>
       <Link href={`/products/${p.slug}`} className="group block">
         <div
-          className={`relative aspect-[4/5] overflow-hidden rounded-[3px] ${p.imageUrl ? "bg-white" : "track grain"}`}
+          className={`relative aspect-[4/5] overflow-hidden rounded-[3px] ${p.imageUrl ? "" : "track grain"}`}
+          style={p.imageUrl ? { backgroundColor: p.imageBg ?? "#ffffff" } : undefined}
         >
           {p.imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element

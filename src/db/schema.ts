@@ -10,8 +10,9 @@ import {
   uniqueIndex,
   index,
   customType,
+  check,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 
 export const silhouetteEnum = pgEnum("silhouette", [
   "tee",
@@ -45,6 +46,8 @@ export const products = pgTable("products", {
   priceCents: integer("price_cents").notNull(),
   silhouette: silhouetteEnum("silhouette").notNull().default("tee"),
   imageUrl: text("image_url"),
+  // Edge colour of the photo; fills the frame around it so no white bars show.
+  imageBg: text("image_bg"),
   // Tints the drawn garment until a photo is added. Each colourway is its own product.
   colorHex: text("color_hex").notNull().default("#888888"),
   active: boolean("active").notNull().default(true),
@@ -165,6 +168,22 @@ export const testimonials = pgTable("testimonials", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// The homepage banner. Always exactly one row (id 1), edited in /admin/hero.
+export const hero = pgTable(
+  "hero",
+  {
+    id: integer("id").primaryKey().default(1),
+    headline: text("headline").notNull(),
+    subhead: text("subhead").notNull().default(""),
+    ctaLabel: text("cta_label").notNull().default(""),
+    ctaHref: text("cta_href").notNull().default("#shop"),
+    imageUrl: text("image_url"),
+    alt: text("alt").notNull().default(""),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [check("hero_single_row", sql`${t.id} = 1`)],
+);
+
 export const productsRelations = relations(products, ({ many }) => ({
   variants: many(variants),
 }));
@@ -190,4 +209,5 @@ export type Order = typeof orders.$inferSelect;
 export type OrderItem = typeof orderItems.$inferSelect;
 export type GalleryPhoto = typeof galleryPhotos.$inferSelect;
 export type Testimonial = typeof testimonials.$inferSelect;
+export type Hero = typeof hero.$inferSelect;
 export type Silhouette = (typeof silhouetteEnum.enumValues)[number];

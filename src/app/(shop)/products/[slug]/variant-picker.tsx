@@ -18,6 +18,7 @@ export function VariantPicker({
     name: string;
     silhouette: Silhouette;
     imageUrl: string | null;
+    imageBg: string | null;
     colorHex: string;
     price: string;
     description: string;
@@ -36,7 +37,8 @@ export function VariantPicker({
   return (
     <div className="grid gap-8 md:grid-cols-[1.15fr_1fr] md:gap-12">
       <div
-        className={`relative aspect-[4/5] overflow-hidden rounded-[4px] ${product.imageUrl ? "bg-white" : "track grain"}`}
+        className={`relative aspect-[4/5] overflow-hidden rounded-[4px] ${product.imageUrl ? "" : "track grain"}`}
+        style={product.imageUrl ? { backgroundColor: product.imageBg ?? "#ffffff" } : undefined}
       >
         {product.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element

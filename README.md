@@ -13,13 +13,14 @@ The storefront uses a black ground, white compressed type (Archivo at 62% width,
 
 - **Logo**: placeholder in `src/components/logo.tsx`. Swap `LogoMark` for the real mark.
 - **Colours and type**: tokens at the top of `src/app/globals.css`. The admin uses the light set; the storefront applies `.street`.
-- **Photos**: all product and gallery photos live in the database (seed copies are in `scripts/seed-photos/`). Upload a photo on the product's admin page (or paste a link). Uploads are resized to 1600px WebP and stored in Postgres, served from `/media/<id>.webp`, so they survive deploys on hosts without a persistent disk. Replacing or removing a photo deletes the old upload.
+- **Photos**: all product, gallery and banner photos live in the database (seed copies are in `scripts/seed-photos/`). Upload a photo on the product's admin page (or paste a link). Uploads are resized to 1600px WebP and stored in Postgres, served from `/media/<id>.webp`, so they survive deploys on hosts without a persistent disk. Replacing or removing a photo deletes the old upload.
 
 ## Homepage content
 
-The banner, section headings and footer social links are set in `src/content/home.ts`.
+Section headings and footer social links are set in `src/content/home.ts`; everything else is edited in admin.
 
-- **Banner photo**: put a file in `public/home/` and set `image: '/home/banner.jpg'` (plus `alt`). Until then the banner shows a drawn print.
+- **Banner**: managed in **Admin → Banner**: headline, the line under it, button text and link, and an optional photo (upload or link, plus a description for screen readers). Without a photo it shows a drawn print.
+- **Product sorting**: shoppers sort the product grid by category (the default), name or price. Clicking the active option flips between ascending and descending; the choice is kept in the URL (`/?sort=price&dir=desc`).
 - **Gallery**: managed in **Admin → Gallery** (upload several at once, edit descriptions, remove). Photos are stored in the database like product photos. The section is hidden when the gallery is empty.
 - **Testimonials**: managed in **Admin → Testimonials** (add, edit, show/hide, delete). The section is hidden until at least one is shown. The seed adds none, so only real reviews ever appear.
 - **Social links**: Facebook and Instagram (`resistbcd`) are in the footer.

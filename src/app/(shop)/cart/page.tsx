@@ -54,7 +54,8 @@ async function Cart({ searchParams }: { searchParams: PageProps<"/cart">["search
               <li key={l.variant.id} className="flex gap-4 py-5">
                 <Link
                   href={`/products/${l.product.slug}`}
-                  className={`relative aspect-[4/5] w-24 shrink-0 overflow-hidden rounded-[3px] ${l.product.imageUrl ? "bg-white" : "track"}`}
+                  className={`relative aspect-[4/5] w-24 shrink-0 overflow-hidden rounded-[3px] ${l.product.imageUrl ? "" : "track"}`}
+                  style={l.product.imageUrl ? { backgroundColor: l.product.imageBg ?? "#ffffff" } : undefined}
                 >
                   {l.product.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element

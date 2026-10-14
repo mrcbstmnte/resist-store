@@ -4,7 +4,20 @@ import { useEffect, useRef, useState } from 'react';
 import { shrink } from '@/lib/shrink-image';
 
 /** Upload a photo or paste a URL. An uploaded file wins over the URL. */
-export function PhotoField({ initialUrl }: { initialUrl: string | null }) {
+export function PhotoField({
+  initialUrl,
+  emptyText = 'No photo — the drawn garment is shown',
+  previewClassName = 'h-36 w-28 bg-white',
+  fit = 'contain',
+  placeholder = '/products/tee.jpg or https://…',
+}: {
+  initialUrl: string | null;
+  emptyText?: string;
+  /** Size (and backdrop) of the preview box, to match where the photo is shown. */
+  previewClassName?: string;
+  fit?: 'contain' | 'cover';
+  placeholder?: string;
+}) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [url, setUrl] = useState(initialUrl ?? '');
   const [filePreview, setFilePreview] = useState<string | null>(null);
@@ -40,12 +53,12 @@ export function PhotoField({ initialUrl }: { initialUrl: string | null }) {
         Photo <span className="font-normal text-ink-soft">(optional)</span>
       </legend>
       <div className="flex flex-wrap items-start gap-4">
-        <div className="grid h-36 w-28 shrink-0 place-items-center overflow-hidden rounded-md border border-thread bg-white">
+        <div className={`grid shrink-0 place-items-center overflow-hidden rounded-md border border-thread ${previewClassName}`}>
           {preview ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={preview} alt="Photo preview" className="h-full w-full object-contain" />
+            <img src={preview} alt="Photo preview" className={`h-full w-full ${fit === 'cover' ? 'object-cover' : 'object-contain'}`} />
           ) : (
-            <span className="px-2 text-center text-xs text-ink-soft">No photo — the drawn garment is shown</span>
+            <span className="px-2 text-center text-xs text-ink-soft">{emptyText}</span>
           )}
         </div>
         <div className="grid min-w-0 flex-1 gap-3">
@@ -73,7 +86,7 @@ export function PhotoField({ initialUrl }: { initialUrl: string | null }) {
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               readOnly={!!filePreview}
-              placeholder="/products/tee.jpg or https://…"
+              placeholder={placeholder}
               className="field mt-1 read-only:opacity-50"
             />
           </div>

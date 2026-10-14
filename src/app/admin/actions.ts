@@ -6,11 +6,12 @@ import { refresh } from "next/cache";
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { galleryPhotos, orderItems, products, stockMovements, testimonials, variants } from "@/db/schema";
+import { galleryPhotos, hero, orderItems, products, stockMovements, testimonials, variants } from "@/db/schema";
 import { isAdminAuthorization } from "@/lib/admin-auth";
 import { adjustStock } from "@/lib/inventory";
 import { slugify } from "@/lib/format";
-import { MediaError, deleteUpload, saveUpload } from "@/lib/media";
+import { MediaError, deleteUpload, photoBackground, saveUpload } from "@/lib/media";
+import { getHero } from "@/lib/hero";
 
 export type AdminState = { error?: string; ok?: string } | null;
 
@@ -47,6 +48,9 @@ export async function changeStock(_: AdminState, form: FormData): Promise<AdminS
   }
 }
 
+// Only http(s): z.url() alone also accepts javascript: and data: links.
+const webUrl = () => z.url({ protocol: /^https?$/ });
+
 const SILHOUETTES = ["tee", "hoodie", "jacket", "pants", "shorts", "cap", "bag"] as const;
 const pesos = z.coerce
   .number({ error: "Enter a price" })
@@ -64,7 +68,7 @@ const productFields = z.object({
     .transform((s) => s || null)
     .pipe(
       z
-        .union([z.string().regex(/^\/[\w\-./]+$/), z.url()], { error: "Use a full URL or a site path like /products/tee.jpg" })
+        .union([z.string().regex(/^\/[\w\-./]+$/), webUrl()], { error: "Use a full URL or a site path like /products/tee.jpg" })
         .nullable(),
     ),
   colorHex: z
@@ -97,6 +101,7 @@ export async function createProduct(_: AdminState, form: FormData): Promise<Admi
   const photo = await photoFrom(form, parsed.data.imageUrl);
   if ("error" in photo) return photo;
   const imageUrl = photo.url;
+  const imageBg = await photoBackground(imageUrl);
   let slug = slugify(name);
   const [{ n }] = await db.execute<{ n: number }>(sql`SELECT count(*)::int AS n FROM products WHERE slug LIKE ${slug + "%"}`);
   if (n > 0) slug = `${slug}-${n + 1}`;
@@ -104,7 +109,7 @@ export async function createProduct(_: AdminState, form: FormData): Promise<Admi
   const id = await db.transaction(async (tx) => {
     const [p] = await tx
       .insert(products)
-      .values({ name, slug, priceCents: price, description, silhouette, imageUrl, colorHex })
+      .values({ name, slug, priceCents: price, description, silhouette, imageUrl, imageBg, colorHex })
       .returning();
     const prefix = slug.toUpperCase().replace(/-/g, "").slice(0, 8);
     for (const [position, size] of sizes.entries()) {
@@ -144,9 +149,10 @@ export async function updateProduct(_: AdminState, form: FormData): Promise<Admi
   const photo = await photoFrom(form, parsed.data.imageUrl);
   if ("error" in photo) return photo;
   const imageUrl = photo.url;
+  const imageBg = await photoBackground(imageUrl);
   await db
     .update(products)
-    .set({ name, priceCents: price, description, silhouette, imageUrl, colorHex, active: form.get("active") === "on" })
+    .set({ name, priceCents: price, description, silhouette, imageUrl, imageBg, colorHex, active: form.get("active") === "on" })
     .where(eq(products.id, id));
   // Drop the old upload once nothing points at it.
   if (before.imageUrl !== imageUrl) await deleteUpload(before.imageUrl);
@@ -298,4 +304,41 @@ export async function removeTestimonial(_: AdminState, form: FormData): Promise<
   await db.delete(testimonials).where(eq(testimonials.id, Number(form.get("id"))));
   refresh();
   return null;
+}
+
+// ── Hero banner ─────────────────────────────────────────────────────────────
+
+const heroFields = z.object({
+  headline: z.string().trim().min(1, "Add a headline").max(80, "Keep the headline under 80 characters"),
+  subhead: z.string().trim().max(200, "Keep the line under the headline short (200 characters max)"),
+  ctaLabel: z.string().trim().max(40, "Keep the button text short"),
+  ctaHref: z
+    .string()
+    .trim()
+    .transform((s) => s || "#shop")
+    .pipe(
+      z.union([z.string().regex(/^[#/][\w\-./?=&#]*$/), webUrl()], {
+        error: "Button link must be #shop, a site path like /products/tee, or a full URL",
+      }),
+    ),
+  imageUrl: productFields.shape.imageUrl,
+  alt: z.string().trim().max(300),
+});
+
+export async function updateHero(_: AdminState, form: FormData): Promise<AdminState> {
+  await requireAdmin();
+  const parsed = heroFields.safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const file = form.get("photo");
+  const hasPhoto = Boolean(parsed.data.imageUrl) || (file instanceof File && file.size > 0);
+  // Checked before uploading, so a rejected save doesn't leave an orphaned photo behind.
+  if (hasPhoto && !parsed.data.alt) return { error: "Describe the photo for people using screen readers" };
+  const before = await getHero();
+  const photo = await photoFrom(form, parsed.data.imageUrl);
+  if ("error" in photo) return photo;
+  const values = { ...parsed.data, imageUrl: photo.url, updatedAt: new Date() };
+  await db.insert(hero).values({ id: 1, ...values }).onConflictDoUpdate({ target: hero.id, set: values });
+  if (before.imageUrl !== values.imageUrl) await deleteUpload(before.imageUrl);
+  refresh();
+  return { ok: "Saved" };
 }

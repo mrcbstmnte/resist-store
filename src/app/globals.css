@@ -71,6 +71,18 @@
   background: var(--color-paper);
   color: var(--color-ink);
   color-scheme: dark;
+  position: relative;
+  isolation: isolate;
+}
+/* The contour-line print from the Endurance Division tee, pinned behind the page. */
+.street::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.13;
+  background: url("/brand/lines.svg") center / cover no-repeat;
 }
 
 @layer components {

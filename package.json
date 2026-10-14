@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "drizzle-kit migrate && next build",
+    "build": "drizzle-kit migrate && tsx scripts/backfill-photo-bg.ts && next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
@@ -12,6 +12,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx scripts/seed.ts",
     "db:reset": "tsx scripts/seed.ts --reset",
+    "db:backfill": "tsx scripts/backfill-photo-bg.ts",
     "build:app": "next build"
   },
   "dependencies": {

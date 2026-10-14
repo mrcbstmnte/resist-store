@@ -86,12 +86,12 @@ async function main() {
   const { db } = await import("../src/db");
   const { products, variants, stockMovements, galleryPhotos: gallery } = await import("../src/db/schema");
   const { slugify } = await import("../src/lib/format");
-  const { saveUpload } = await import("../src/lib/media");
+  const { photoBackground, saveUpload } = await import("../src/lib/media");
 
   const reset = process.argv.includes("--reset");
   if (reset) {
     await db.execute(
-      sql`TRUNCATE stock_movements, order_items, orders, variants, products, gallery_photos, testimonials, media RESTART IDENTITY CASCADE`,
+      sql`TRUNCATE stock_movements, order_items, orders, variants, products, gallery_photos, testimonials, hero, media RESTART IDENTITY CASCADE`,
     );
   } else {
     const [{ count }] = await db.execute<{ count: number }>(sql`SELECT count(*)::int AS count FROM products`);
@@ -105,6 +105,7 @@ async function main() {
   for (const p of catalog) {
     for (const [color, hex, photo] of p.colors) {
       const name = `${p.name} — ${color}`;
+      const imageUrl = await saveUpload(await photoFile("products", photo));
       const [product] = await db
         .insert(products)
         .values({
@@ -114,7 +115,8 @@ async function main() {
           priceCents: p.priceCents,
           silhouette: p.silhouette,
           colorHex: hex,
-          imageUrl: await saveUpload(await photoFile("products", photo)),
+          imageUrl,
+          imageBg: await photoBackground(imageUrl),
         })
         .returning();
       count++;
