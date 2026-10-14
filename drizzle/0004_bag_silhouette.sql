@@ -1,0 +1,1 @@
+ALTER TYPE "public"."silhouette" ADD VALUE 'bag';
