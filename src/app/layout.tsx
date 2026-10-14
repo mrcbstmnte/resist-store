@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "RESIST", template: "%s | RESIST" },
+  title: { default: "RESIST -- Faster than my excuses", template: "%s | RESIST" },
   description: "Active wear from Bacolod. Made to move, built for everyday.",
 };
 
